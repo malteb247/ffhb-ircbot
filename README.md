@@ -1,2 +1,2 @@
 # ffhb-sopel
-Sopel module with FreifunkBremen features.
+A module for module [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](https://github.com/FreifunkBremen) features.
