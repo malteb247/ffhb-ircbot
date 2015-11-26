@@ -12,17 +12,17 @@ def get_json(url):
     return json.loads(text)
 
 
-def say(bot, prefix, content):
-    msg = "[{}] {}".format(prefix.upper(), content)
-    bot.say(msg)
-    print(msg)
+def send_text(bot, prefix, messages):
+    for m in messages:
+        bot.reply("[{}] {} \r\n".format(prefix.upper(), m))
+        print(m)
 
 
 @sopel.module.commands('status', 'network')
 def ffhb_status(bot, trigger):
     command_name = "status"
     nodes = get_json("http://downloads.bremen.freifunk.net/data/nodelist.json")
-
+    messages = []
     total_count = 0
     online_count = 0
     client_count = 0
@@ -43,27 +43,29 @@ def ffhb_status(bot, trigger):
     if len(max_client_node_name) > 30:
         max_client_node_name = max_client_node_name[:27] + "..."
 
-    msg = "Es sind {} Knoten bekannt. {} sind online ({}%).".format(total_count,
-                                                                    online_count,
-                                                                    round(online_count / (total_count / 100), 2))
-    say(bot, command_name, msg)
+    messages.append("Von {} bekannten Knoten sind {} online ({}%)."
+                    .format(total_count,
+                            online_count,
+                            round(online_count / (total_count / 100), 2)))
 
-    msg = "Es sind {} clients verbunden, {} je Knoten.".format(client_count,
-                                                               round(client_count / online_count, 2))
-    say(bot, command_name, msg)
+    messages.append("Es sind {} clients verbunden (~{} je Knoten)."
+                    .format(client_count,
+                            round(client_count / online_count, 2)))
 
-    msg = "{} ist die Node mit den meisten Clients. {} ({}%).".format(max_client_node_name,
-                                                                      max_client_count,
-                                                                      round(max_client_count / (client_count / 100), 2))
-    say(bot, command_name, msg)
+    messages.append("{} ist die Node mit den meisten Clients. {} ({}%)."
+                    .format(max_client_node_name,
+                            max_client_count,
+                            round(max_client_count / (client_count / 100), 2)))
+
+    send_text(bot, command_name, messages)
 
 
 @sopel.module.commands('node', 'knoten')
 def ffhb_node(bot, trigger):
     command_name = "node"
-    search_text = trigger.split(' ')[1].lower()
+    search_text = trigger.group(2).lower()
     info = get_json("http://downloads.bremen.freifunk.net/data/nodes.json")
-
+    messages = ["Zu diesem Knoten liegen keine Infos vor."]
     found_node = None
 
     for n in info["nodes"]:
@@ -73,33 +75,36 @@ def ffhb_node(bot, trigger):
             break
 
     if found_node is None:
-        say(bot, "NODE", "Zu diesem Knoten liegen keine Infos vor.")
+        send_text(bot, command_name, messages)
         return
 
+    messages.clear()
     node_info = found_node["nodeinfo"]
     auto_update ="Auto-update AUS"
     if node_info["software"]["autoupdater"]["enabled"]:
         auto_update = "Auto-update {}".format(node_info["software"]["autoupdater"]["branch"])
 
-    say(bot, "NODE", "{} ({})".format(node_info["hostname"],
-                                      node_info["node_id"]))
+    messages.append("{} ({})".format(node_info["hostname"],
+                                     node_info["node_id"]))
 
     if "owner" in found_node["nodeinfo"]:
-        say(bot, command_name, "Kontakt  : " + node_info["owner"]["contact"])
+        messages.append("Kontakt  : " + node_info["owner"]["contact"])
     else:
-        say(bot, command_name, "Kontakt  : n/a")
+        messages.append("Kontakt  : n/a")
 
     status = "OFFLINE"
 
     if found_node["flags"]["online"]:
         status = "online ({} clients)".format(found_node["statistics"]["clients"])
 
-    say(bot, command_name, "Status   : " + status)
-    say(bot, command_name, "Model    : " + node_info["hardware"]["model"])
-    say(bot, command_name, "Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
-    say(bot, command_name, "http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
+    messages.append("Status   : " + status)
+    messages.append("Model    : " + node_info["hardware"]["model"])
+    messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
+    messages.append("http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
+
+    send_text(bot, command_name, messages)
 
 
 @sopel.module.commands('faq', 'answers', 'antworten')
 def faq(bot, trigger):
-    say(bot, "FAQ", "Antworten auf häufig gestellte Fragen findest du hier: http://bremen.freifunk.net/faq.html")
+    bot.say("[FAQ] Antworten auf häufig gestellte Fragen findest du hier: http://bremen.freifunk.net/faq.html")
