@@ -1,37 +1,50 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import urllib2
-#from urllib.request import urlopen
 import json
 import sopel.module
-import time
-from pprint import pprint
 
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
 
+
 def get_json(url):
+    """ Retrieve data from url and create json object
+
+    :param url: http url that returns json
+    :return: JSON object
+    """
     response = urllib2.urlopen(url).read()
-    #request = urlopen(url)
-    #response = request.readall()
     # decode response text
     response_text = response.decode("utf-8")
     return json.loads(response_text)
 
 
-def send_text(bot, prefix, messages, nick):
+def send_messages(bot, prefix, messages, nick=None):
+    """Send messages with prefix by bot as a private message
+
+    :param bot: Instance of bot to use
+    :param prefix: the command name
+    :param messages: list of messages to send
+    :param nick: message receiver, if None the message goes to the channel
+    """
+
     for m in messages:
-        bot.msg(nick, "[{}] {} \r\n".format(prefix.upper(), m))
-        print(m)
-
-
-def dump(instance):
-    pprint(vars(instance))
+        if nick is not None:
+            bot.msg(nick, "[{}] {} \r\n".format(prefix.upper(), m))
+        else:
+            bot.say("[{}] {} \r\n".format(prefix.upper(), m))
 
 
 @sopel.module.commands('status', 'network')
 def ffhb_status(bot, trigger):
+    """Send status of the FFHB network
+
+    :param bot: bot that triggered
+    :param trigger: command that triggered
+    :return:
+    """
     command_name = "status"
     nodes = get_json(NODELIST_URL)
     messages = []
@@ -69,11 +82,16 @@ def ffhb_status(bot, trigger):
                             max_client_count,
                             round(max_client_count / (client_count / 100), 2)))
 
-    send_text(bot, command_name, messages, trigger.nick)
+    send_messages(bot, command_name, messages)
 
 
 @sopel.module.commands('node', 'knoten')
 def ffhb_node(bot, trigger):
+    """Send status of a node
+
+    :param bot: bot that triggered
+    :param trigger: command that triggered
+    """
     command_name = "node"
     search_text = trigger.group(2).lower()
     info = get_json(NODES_URL)
@@ -87,13 +105,12 @@ def ffhb_node(bot, trigger):
             break
 
     if found_node is None:
-        send_text(bot, command_name, messages, trigger.nick)
+        send_messages(bot, command_name, messages)
         return
 
-    #messages.clear()
     messages = []
     node_info = found_node["nodeinfo"]
-    auto_update ="Auto-update AUS"
+    auto_update = "Auto-update AUS"
     if node_info["software"]["autoupdater"]["enabled"]:
         auto_update = "Auto-update {}".format(node_info["software"]["autoupdater"]["branch"])
 
@@ -115,10 +132,5 @@ def ffhb_node(bot, trigger):
     messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
     messages.append("http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
 
-    send_text(bot, command_name, messages, trigger.nick)
-
-
-#@sopel.module.commands('faq', 'answers', 'antworten')
-#def faq(bot, trigger):
-#    bot.say("[FAQ] Antworten auf häufig gestellte Fragen findest du hier: http://bremen.freifunk.net/faq.html")
-
+    send_messages(bot, command_name, [trigger.nick + ": Ich sende dir eine Privatnachricht."])
+    send_messages(bot, command_name, messages, trigger.nick)
