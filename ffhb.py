@@ -4,6 +4,7 @@
 import urllib2
 import json
 import sopel.module
+import math
 
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
@@ -48,9 +49,9 @@ def ffhb_status(bot, trigger):
     command_name = "status"
     nodes = get_json(NODELIST_URL)
     messages = []
-    total_count = 0
-    online_count = 0
-    client_count = 0
+    total_count = 0.0
+    online_count = 0.0
+    client_count = 0.0
 
     max_client_node_name = ""
     max_client_count = 0
@@ -69,17 +70,17 @@ def ffhb_status(bot, trigger):
         max_client_node_name = max_client_node_name[:27] + "..."
 
     messages.append("Von {} bekannten Knoten sind {} online ({}%)."
-                    .format(total_count,
-                            online_count,
+                    .format(int(total_count),
+                            int(online_count),
                             round(online_count / (total_count / 100), 2)))
 
     messages.append("Es sind {} clients verbunden (~{} je Knoten)."
-                    .format(client_count,
+                    .format(int(client_count),
                             round(client_count / online_count, 2)))
 
     messages.append("{} ist die Node mit den meisten Clients. {} ({}%)."
                     .format(max_client_node_name,
-                            max_client_count,
+                            int(max_client_count),
                             round(max_client_count / (client_count / 100), 2)))
 
     send_messages(bot, command_name, messages)
