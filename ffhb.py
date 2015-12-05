@@ -126,7 +126,7 @@ def ffhb_node(bot, trigger):
 
 @sopel.module.commands('highscore', 'top')
 def ffhb_highscore(bot, trigger):
-    command_name = "highscore"
+    command_name = "top"
     nodes_json = get_json(NODELIST_URL)
     nodes_json["nodes"].sort(key=client_count, reverse=True)
     nodes = nodes_json["nodes"]
