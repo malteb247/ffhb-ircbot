@@ -29,7 +29,7 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 ```
 .node poplar_02
 [NODE] poplar_02 (c4e984b0da68) 
-[NODE] Kontakt  : ec8or@posteo.de 
+[NODE] Kontakt  : ec8or
 [NODE] Status   : online (2 clients) 
 [NODE] Model    : TP-Link CPE210 v1.0 
 [NODE] Firmware : 2015.1.2+bremen2~testing (Auto-update testing) 
