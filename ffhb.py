@@ -31,6 +31,9 @@ def send_messages(bot, prefix, messages, nick=None):
     :param nick: message receiver, if None the message goes to the channel
     """
 
+    if nick is not None:
+        bot.say("[{}] {} \r\n".format(prefix.upper(), nick + ": Ich sende dir eine Privatnachricht."))
+
     for m in messages:
         if nick is not None:
             bot.msg(nick, "[{}] {} \r\n".format(prefix.upper(), m))
@@ -51,23 +54,13 @@ def ffhb_status(bot, trigger):
     messages = []
     total_count = 0.0
     online_count = 0.0
-    client_count = 0.0
-
-    max_client_node_name = ""
-    max_client_count = 0
+    client_count = 0.0    
 
     for node in nodes["nodes"]:
         if node["status"]["online"]:
             online_count += 1
         client_count += node["status"]["clients"]
         total_count += 1
-
-        if max_client_count < node["status"]["clients"]:
-            max_client_count = node["status"]["clients"]
-            max_client_node_name = node["name"]
-
-    if len(max_client_node_name) > 30:
-        max_client_node_name = max_client_node_name[:27] + "..."
 
     messages.append("Von {} bekannten Knoten sind {} online ({}%)."
                     .format(int(total_count),
@@ -77,11 +70,6 @@ def ffhb_status(bot, trigger):
     messages.append("Es sind {} clients verbunden (~{} je Knoten)."
                     .format(int(client_count),
                             round(client_count / online_count, 2)))
-
-    messages.append("{} ist die Node mit den meisten Clients. {} ({}%)."
-                    .format(max_client_node_name,
-                            int(max_client_count),
-                            round(max_client_count / (client_count / 100), 2)))
 
     send_messages(bot, command_name, messages)
 
@@ -133,5 +121,30 @@ def ffhb_node(bot, trigger):
     messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
     messages.append("http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
 
-    send_messages(bot, command_name, [trigger.nick + ": Ich sende dir eine Privatnachricht."])
-    send_messages(bot, command_name, messages, trigger.nick)
+    send_messages(bot, command_name, messages)
+
+
+@sopel.module.commands('highscore', 'top')
+def ffhb_highscore(bot, trigger):
+    command_name = "highscore"
+    nodes_json = get_json(NODELIST_URL)
+    nodes_json["nodes"].sort(key=client_count, reverse=True)
+    nodes = nodes_json["nodes"]
+
+    messages = []
+
+    for idx in range(0,5):
+	 messages.append("{}: {} ({})".format(idx+1, shorter(nodes[idx]["name"]), nodes[idx]["status"]["clients"]))
+
+    send_messages(bot, command_name, messages)
+
+def shorter(s, length=27, ext="..."):
+    if len(s) > length:
+        return s[:length-3] + ext
+    return s
+
+def client_count(node):
+    try:
+        return int(node["status"]["clients"])
+    except KeyError:
+        return 0
