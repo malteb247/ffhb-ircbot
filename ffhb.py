@@ -4,12 +4,25 @@
 import urllib2
 import json
 import sopel.module
+import threading
+import time
 import math
 
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
 STATUS_URL = "http://status.ffhb.tk/data/merged.json"
+STATUS_URL_RELOADTIME = 350
 
+
+def setup(bot):
+    def monitor(bot):
+        time.sleep(5)
+        while True:
+            ffhb_gateway(bot,None,"#ffhb_gelaber")
+            time.sleep(STATUS_URL_RELOADTIME)
+    targs = (bot,)
+    t = threading.Thread(target=monitor, args=targs)
+    t.start()
 
 def get_json(url):
     """ Retrieve data from url and create json object
@@ -23,7 +36,7 @@ def get_json(url):
     return json.loads(response_text)
 
 
-def send_messages(bot, prefix, messages, nick=None):
+def send_messages(bot, prefix, messages, to=None):
     """Send messages with prefix by bot as a private message
 
     :param bot: Instance of bot to use
@@ -32,12 +45,12 @@ def send_messages(bot, prefix, messages, nick=None):
     :param nick: message receiver, if None the message goes to the channel
     """
 
-    if nick is not None:
-        bot.say("[{}] {} \r\n".format(prefix.upper(), nick + ": Ich sende dir eine Privatnachricht."))
+    if to is not None and "#" not in to:
+        bot.say("[{}] {} \r\n".format(prefix.upper(), to + ": Ich sende dir eine Privatnachricht."))
 
     for m in messages:
-        if nick is not None:
-            bot.msg(nick, "[{}] {} \r\n".format(prefix.upper(), m))
+        if to is not None:
+            bot.msg(to, "[{}] {} \r\n".format(prefix.upper(), m))
         else:
             bot.say("[{}] {} \r\n".format(prefix.upper(), m))
 
@@ -140,42 +153,47 @@ def ffhb_highscore(bot, trigger):
     send_messages(bot, command_name, messages)
 
 @sopel.module.commands('gateway', 'vpn')
-def ffhb_gateway(bot, trigger):
+def ffhb_gateway(bot, trigger,to=None):
+    """Send status of the FFHB gateways/vpn-servers
+
+    :param bot: bot that triggered
+    :param trigger: command that triggered
+    :return:
+    """
     command_name = "vpn"
-    server = trigger.group(2).lower()
+    # Selector
+    if trigger is not None and trigger.group(2) is not None:
+        vpn_server = trigger.group(2).lower()
+    else:
+        vpn_server = "all"
+    if "." not in vpn_server:
+        vpn_server += ".bremen.freifunk.net"
+
+    services = ["ntp","addresses","dns","uplink"]
     status_json = get_json(STATUS_URL)
     status = {}
     count = 0
     for data in status_json:
+        count += 1
         for vpn in data["vpn-servers"]:
-            if vpn["name"] == server:
-                if vpn["name"] not in status:
-                    status[vpn["name"]] = {"ntp":{"ipv6":0,"ipv4":0},"addresses":{"ipv6":0,"ipv4":0},"dns":{"ipv6":0,"ipv4":0},"uplink":{"ipv6":0,"ipv4":0}}
-                count+=1
-                status[vpn["name"]]["ntp"]["ipv4"]+= vpn["ntp"][0]["ipv4"]
-                status[vpn["name"]]["ntp"]["ipv6"]+= vpn["ntp"][0]["ipv6"]
-                status[vpn["name"]]["addresses"]["ipv4"]+= vpn["addresses"][0]["ipv4"]
-                status[vpn["name"]]["addresses"]["ipv6"]+= vpn["addresses"][0]["ipv6"]
-                status[vpn["name"]]["dns"]["ipv4"]+= vpn["dns"][0]["ipv4"]
-                status[vpn["name"]]["dns"]["ipv6"]+= vpn["dns"][0]["ipv6"]
-                status[vpn["name"]]["uplink"]["ipv4"]+= vpn["uplink"][0]["ipv4"]
-                status[vpn["name"]]["uplink"]["ipv6"]+= vpn["uplink"][0]["ipv6"]
-    for vpn in status:
-        status[vpn]["ntp"]["ipv4"] = status[vpn]["ntp"]["ipv4"]/count
-        status[vpn]["ntp"]["ipv6"] = status[vpn]["ntp"]["ipv6"]/count
-        status[vpn]["addresses"]["ipv4"] = status[vpn]["addresses"]["ipv4"]/count
-        status[vpn]["addresses"]["ipv6"] = status[vpn]["addresses"]["ipv6"]/count
-        status[vpn]["dns"]["ipv4"] = status[vpn]["dns"]["ipv4"]/count
-        status[vpn]["dns"]["ipv6"] = status[vpn]["dns"]["ipv6"]/count
-        status[vpn]["uplink"]["ipv4"] = status[vpn]["uplink"]["ipv4"]/count
-        status[vpn]["uplink"]["ipv6"] = status[vpn]["uplink"]["ipv6"]/count
+            if vpn["name"] not in status:
+                status[vpn["name"]] = {}
+                for service in services:
+                     status[vpn["name"]][service] = {"ipv6":0,"ipv4":0}
+            for service in services:
+                status[vpn["name"]][service]["ipv4"]+= vpn[service][0]["ipv4"]
+                status[vpn["name"]][service]["ipv6"]+= vpn[service][0]["ipv6"]
     messages = []
-    messages.append("Into VPN-Server: {}".format(server))
-    messages.append("NTP: (IPv4: {}, IPv6: {})".format(status[server]["ntp"]["ipv4"],status[server]["ntp"]["ipv6"]))
-    messages.append("ADDR: (IPv4: {}, IPv6: {})".format(status[server]["addresses"]["ipv4"],status[server]["addresses"]["ipv6"]))
-    messages.append("DNS: (IPv4: {}, IPv6: {})".format(status[server]["dns"]["ipv4"],status[server]["dns"]["ipv6"]))
-    messages.append("Uplink: (IPv4: {}, IPv6: {})".format(status[server]["uplink"]["ipv4"],status[server]["uplink"]["ipv6"]))
-    send_messages(bot, command_name, messages)
+    for vpn in status:
+        if vpn_server == vpn or "all" in vpn_server:
+            for service in services:
+                if (status[vpn][service]["ipv4"]/count)!=1 or (status[vpn][service]["ipv6"]/count) !=1:
+                    messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,service,status[vpn][service]["ipv4"],status[vpn][service]["ipv6"],count))
+    if len(messages)> 0:
+        if to is None:
+            send_messages(bot, command_name, messages)
+        else:
+            send_messages(bot, command_name, messages,to)
 
 def shorter(s, length=27, ext="..."):
     if len(s) > length:
