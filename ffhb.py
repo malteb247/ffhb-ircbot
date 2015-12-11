@@ -1,14 +1,28 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
 import urllib2
 import json
 import sopel.module
+import threading
+import time
 import math
 
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
+STATUS_URL = "http://status.ffhb.tk/data/merged.json"
+STATUS_URL_RELOADTIME = 350
 
+
+def setup(bot):
+    def monitor(bot):
+        time.sleep(5)
+        while True:
+            ffhb_gateway(bot,None,"#ffhb_gelaber")
+            time.sleep(STATUS_URL_RELOADTIME)
+    targs = (bot,)
+    t = threading.Thread(target=monitor, args=targs)
+    t.start()
 
 def get_json(url):
     """ Retrieve data from url and create json object
@@ -22,7 +36,7 @@ def get_json(url):
     return json.loads(response_text)
 
 
-def send_messages(bot, prefix, messages, nick=None):
+def send_messages(bot, prefix, messages, to=None):
     """Send messages with prefix by bot as a private message
 
     :param bot: Instance of bot to use
@@ -31,12 +45,12 @@ def send_messages(bot, prefix, messages, nick=None):
     :param nick: message receiver, if None the message goes to the channel
     """
 
-    if nick is not None:
-        bot.say("[{}] {} \r\n".format(prefix.upper(), nick + ": Ich sende dir eine Privatnachricht."))
+    if to is not None and "#" not in to:
+        bot.say("[{}] {} \r\n".format(prefix.upper(), to + ": Ich sende dir eine Privatnachricht."))
 
     for m in messages:
-        if nick is not None:
-            bot.msg(nick, "[{}] {} \r\n".format(prefix.upper(), m))
+        if to is not None:
+            bot.msg(to, "[{}] {} \r\n".format(prefix.upper(), m))
         else:
             bot.say("[{}] {} \r\n".format(prefix.upper(), m))
 
@@ -54,7 +68,7 @@ def ffhb_status(bot, trigger):
     messages = []
     total_count = 0.0
     online_count = 0.0
-    client_count = 0.0    
+    client_count = 0.0
 
     for node in nodes["nodes"]:
         if node["status"]["online"]:
@@ -134,9 +148,52 @@ def ffhb_highscore(bot, trigger):
     messages = []
 
     for idx in range(0,5):
-	 messages.append("{}: {} ({})".format(idx+1, shorter(nodes[idx]["name"]), nodes[idx]["status"]["clients"]))
+        messages.append("{}: {} ({})".format(idx+1, shorter(nodes[idx]["name"]), nodes[idx]["status"]["clients"]))
 
     send_messages(bot, command_name, messages)
+
+@sopel.module.commands('gateway', 'vpn')
+def ffhb_gateway(bot, trigger,to=None):
+    """Send status of the FFHB gateways/vpn-servers
+
+    :param bot: bot that triggered
+    :param trigger: command that triggered
+    :return:
+    """
+    command_name = "vpn"
+    # Selector
+    if trigger is not None and trigger.group(2) is not None:
+        vpn_server = trigger.group(2).lower()
+    else:
+        vpn_server = "all"
+    if "." not in vpn_server:
+        vpn_server += ".bremen.freifunk.net"
+
+    services = ["ntp","addresses","dns","uplink"]
+    status_json = get_json(STATUS_URL)
+    status = {}
+    count = 0
+    for data in status_json:
+        count += 1
+        for vpn in data["vpn-servers"]:
+            if vpn["name"] not in status:
+                status[vpn["name"]] = {}
+                for service in services:
+                     status[vpn["name"]][service] = {"ipv6":0,"ipv4":0}
+            for service in services:
+                status[vpn["name"]][service]["ipv4"]+= vpn[service][0]["ipv4"]
+                status[vpn["name"]][service]["ipv6"]+= vpn[service][0]["ipv6"]
+    messages = []
+    for vpn in status:
+        if vpn_server == vpn or "all" in vpn_server:
+            for service in services:
+                if (status[vpn][service]["ipv4"]/count)!=1 or (status[vpn][service]["ipv6"]/count) !=1:
+                    messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,service,status[vpn][service]["ipv4"],status[vpn][service]["ipv6"],count))
+    if len(messages)> 0:
+        if to is None:
+            send_messages(bot, command_name, messages)
+        else:
+            send_messages(bot, command_name, messages,to)
 
 def shorter(s, length=27, ext="..."):
     if len(s) > length:
