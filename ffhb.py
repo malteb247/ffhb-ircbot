@@ -11,18 +11,19 @@ import math
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
 STATUS_URL = "http://status.ffhb.tk/data/merged.json"
-STATUS_URL_RELOADTIME = 350
+STATUS_URL_RELOAD_MINUTES = 30
+CHANNEL = "#ffhb_gelaber"
 
 
 def setup(bot):
     def monitor(bot):
         time.sleep(5)
         while True:
-            ffhb_gateway(bot,None,"#ffhb_gelaber")
-            time.sleep(STATUS_URL_RELOADTIME)
-    targs = (bot,)
-    t = threading.Thread(target=monitor, args=targs)
+            ffhb_gateway(bot, None, CHANNEL)
+            time.sleep(STATUS_URL_RELOAD_MINUTES * 60)
+    t = threading.Thread(target=monitor, args=(bot,))
     t.start()
+
 
 def get_json(url):
     """ Retrieve data from url and create json object
@@ -42,7 +43,7 @@ def send_messages(bot, prefix, messages, to=None):
     :param bot: Instance of bot to use
     :param prefix: the command name
     :param messages: list of messages to send
-    :param nick: message receiver, if None the message goes to the channel
+    :param to: message receiver, if None the message goes to the channel
     """
 
     if to is not None and "#" not in to:
@@ -55,7 +56,7 @@ def send_messages(bot, prefix, messages, to=None):
             bot.say("[{}] {} \r\n".format(prefix.upper(), m))
 
 
-@sopel.module.commands('status', 'network')
+@sopel.module.commands('status')
 def ffhb_status(bot, trigger):
     """Send status of the FFHB network
 
@@ -88,7 +89,7 @@ def ffhb_status(bot, trigger):
     send_messages(bot, command_name, messages)
 
 
-@sopel.module.commands('node', 'knoten')
+@sopel.module.commands('node')
 def ffhb_node(bot, trigger):
     """Send status of a node
 
@@ -138,8 +139,8 @@ def ffhb_node(bot, trigger):
     send_messages(bot, command_name, messages)
 
 
-@sopel.module.commands('highscore', 'top')
-def ffhb_highscore(bot, trigger):
+@sopel.module.commands('top')
+def ffhb_top(bot, trigger):
     command_name = "top"
     nodes_json = get_json(NODELIST_URL)
     nodes_json["nodes"].sort(key=client_count, reverse=True)
@@ -152,12 +153,14 @@ def ffhb_highscore(bot, trigger):
 
     send_messages(bot, command_name, messages)
 
-@sopel.module.commands('gateway', 'vpn')
-def ffhb_gateway(bot, trigger,to=None):
+
+@sopel.module.commands('vpn')
+def ffhb_gateway(bot, trigger, to=None):
     """Send status of the FFHB gateways/vpn-servers
 
     :param bot: bot that triggered
     :param trigger: command that triggered
+    :param to: message receiver, if None the message goes to the channel
     :return:
     """
     command_name = "vpn"
@@ -169,7 +172,7 @@ def ffhb_gateway(bot, trigger,to=None):
     if "." not in vpn_server:
         vpn_server += ".bremen.freifunk.net"
 
-    services = ["ntp","addresses","dns","uplink"]
+    services = ["ntp", "addresses", "dns", "uplink"]
     status_json = get_json(STATUS_URL)
     status = {}
     count = 0
@@ -179,26 +182,32 @@ def ffhb_gateway(bot, trigger,to=None):
             if vpn["name"] not in status:
                 status[vpn["name"]] = {}
                 for service in services:
-                     status[vpn["name"]][service] = {"ipv6":0,"ipv4":0}
+                    status[vpn["name"]][service] = {"ipv6": 0, "ipv4": 0}
             for service in services:
-                status[vpn["name"]][service]["ipv4"]+= vpn[service][0]["ipv4"]
-                status[vpn["name"]][service]["ipv6"]+= vpn[service][0]["ipv6"]
+                status[vpn["name"]][service]["ipv4"] += vpn[service][0]["ipv4"]
+                status[vpn["name"]][service]["ipv6"] += vpn[service][0]["ipv6"]
     messages = []
     for vpn in status:
         if vpn_server == vpn or "all" in vpn_server:
             for service in services:
-                if (status[vpn][service]["ipv4"]/count)!=1 or (status[vpn][service]["ipv6"]/count) !=1:
-                    messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,service,status[vpn][service]["ipv4"],status[vpn][service]["ipv6"],count))
-    if len(messages)> 0:
+                if (status[vpn][service]["ipv4"]/count) !=1 or (status[vpn][service]["ipv6"]/count) != 1:
+                    messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,
+                                                                                    service,
+                                                                                    status[vpn][service]["ipv4"],
+                                                                                    status[vpn][service]["ipv6"],
+                                                                                    count))
+    if len(messages) > 0:
         if to is None:
             send_messages(bot, command_name, messages)
         else:
             send_messages(bot, command_name, messages,to)
 
+
 def shorter(s, length=27, ext="..."):
     if len(s) > length:
         return s[:length-3] + ext
     return s
+
 
 def client_count(node):
     try:

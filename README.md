@@ -46,10 +46,11 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 
 ###.vpn
 Commands
-- status of all vpns: `.status`, `.status all`
-- status of specific vpn:`.status vpn01`, `.status vpn01.bremen.freifunk.net`
+* status of all vpns: `.status`, `.status all`
+* status of specific vpn:`.status vpn01`, `.status vpn01.bremen.freifunk.net`
 
-Answer: It reply only not working systems (based on count/client avg)
+Answer: It replies only not working systems (based on count/client avg)
+
 ```
 [VPN] vpn06.bremen.freifunk.net - uplink: (IPv4: 1, IPv6: 1) count:2
 [VPN] vpn02.bremen.freifunk.net - ntp: (IPv4: 0, IPv6: 0) count:2
