@@ -11,6 +11,7 @@ import math
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
 STATUS_URL = "http://status.ffhb.tk/data/merged.json"
+STATUS_OVERALL = "http://status.ffhb.tk/data/overall.json"
 STATUS_URL_RELOAD_MINUTES = 60
 CHANNEL = "#ffhb_gelaber"
 
