@@ -114,12 +114,15 @@ def ffhb_node(bot, trigger):
 
     messages = []
     node_info = found_node["nodeinfo"]
-    auto_update = "Auto-update AUS"
-    if node_info["software"]["autoupdater"]["enabled"]:
-        auto_update = "Auto-update {}".format(node_info["software"]["autoupdater"]["branch"])
+    auto_update = None
+    # gateways have no autoupdater
+    if "autoupdater" in node_info["software"]:
+	auto_update = "Auto-update AUS"
+    	if node_info["software"]["autoupdater"]["enabled"]:
+            auto_update = "Auto-update {}".format(node_info["software"]["autoupdater"]["branch"])
 
     messages.append("{} ({})".format(node_info["hostname"],
-                                     node_info["node_id"]))
+       	                             node_info["node_id"]))
 
     if "owner" in found_node["nodeinfo"]:
         messages.append("Kontakt  : " + node_info["owner"]["contact"])
@@ -132,8 +135,15 @@ def ffhb_node(bot, trigger):
         status = "online ({} clients)".format(found_node["statistics"]["clients"])
 
     messages.append("Status   : " + status)
-    messages.append("Model    : " + node_info["hardware"]["model"])
-    messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
+
+    if "hardware" in node_info:
+    	messages.append("Model    : " + node_info["hardware"]["model"])
+
+    if auto_update is not None: 
+    	messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
+    else:
+    	messages.append("Firmware : {}".format(node_info["software"]["firmware"]["release"]))
+    	
     messages.append("http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
 
     send_messages(bot, command_name, messages)
