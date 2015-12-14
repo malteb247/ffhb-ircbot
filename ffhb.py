@@ -22,6 +22,7 @@ def setup(bot):
         while True:
             ffhb_gateway(bot, None, CHANNEL)
             time.sleep(STATUS_URL_RELOAD_MINUTES * 60)
+
     t = threading.Thread(target=monitor, args=(bot,))
     t.start()
 
@@ -116,14 +117,16 @@ def ffhb_node(bot, trigger):
     messages = []
     node_info = found_node["nodeinfo"]
     auto_update = None
+
     # gateways have no autoupdater
     if "autoupdater" in node_info["software"]:
-	auto_update = "Auto-update AUS"
-    	if node_info["software"]["autoupdater"]["enabled"]:
+        if node_info["software"]["autoupdater"]["enabled"]:
             auto_update = "Auto-update {}".format(node_info["software"]["autoupdater"]["branch"])
+        else:
+            auto_update = "Auto-update AUS"
 
     messages.append("{} ({})".format(node_info["hostname"],
-       	                             node_info["node_id"]))
+                                     node_info["node_id"]))
 
     if "owner" in found_node["nodeinfo"]:
         messages.append("Kontakt  : " + node_info["owner"]["contact"])
@@ -138,13 +141,13 @@ def ffhb_node(bot, trigger):
     messages.append("Status   : " + status)
 
     if "hardware" in node_info:
-    	messages.append("Model    : " + node_info["hardware"]["model"])
+        messages.append("Model    : " + node_info["hardware"]["model"])
 
-    if auto_update is not None: 
-    	messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
+    if auto_update is not None:
+        messages.append("Firmware : {} ({})".format(node_info["software"]["firmware"]["release"], auto_update))
     else:
-    	messages.append("Firmware : {}".format(node_info["software"]["firmware"]["release"]))
-    	
+        messages.append("Firmware : {}".format(node_info["software"]["firmware"]["release"]))
+
     messages.append("http://bremen.freifunk.net/meshviewer/#!v:m;n:" + node_info["node_id"])
 
     send_messages(bot, command_name, messages)
@@ -159,8 +162,8 @@ def ffhb_top(bot, trigger):
 
     messages = []
 
-    for idx in range(0,5):
-        messages.append("{}: {} ({})".format(idx+1, shorter(nodes[idx]["name"]), nodes[idx]["status"]["clients"]))
+    for idx in range(0, 5):
+        messages.append("{}: {} ({})".format(idx + 1, shorter(nodes[idx]["name"]), nodes[idx]["status"]["clients"]))
 
     send_messages(bot, command_name, messages)
 
@@ -205,7 +208,11 @@ def ffhb_gateway(bot, trigger, to=None):
     for vpn in status:
         if vpn_server == vpn or "all" in vpn_server:
             for service in services:
-                if (status[vpn][service]["ipv4"]/count) !=1 or (status[vpn][service]["ipv6"]/count) != 1:
+                limit = 0.50
+                ipv4_rate = float(status[vpn][service]["ipv4"]) / float(count)
+                ipv6_rate = float(status[vpn][service]["ipv6"]) / float(count)
+
+                if round(ipv4_rate, 2) < limit or round(ipv6_rate, 2) < limit:
                     messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,
                                                                                     service,
                                                                                     status[vpn][service]["ipv4"],
@@ -215,12 +222,12 @@ def ffhb_gateway(bot, trigger, to=None):
         if to is None:
             send_messages(bot, command_name, messages)
         else:
-            send_messages(bot, command_name, messages,to)
+            send_messages(bot, command_name, messages, to)
 
 
 def shorter(s, length=27, ext="..."):
     if len(s) > length:
-        return s[:length-3] + ext
+        return s[:length - 3] + ext
     return s
 
 
