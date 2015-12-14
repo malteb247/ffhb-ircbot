@@ -194,9 +194,13 @@ def ffhb_gateway(bot, trigger, to=None):
                 status[vpn["name"]] = {}
                 for service in services:
                     status[vpn["name"]][service] = {"ipv6": 0, "ipv4": 0}
+
             for service in services:
-                status[vpn["name"]][service]["ipv4"] += vpn[service][0]["ipv4"]
-                status[vpn["name"]][service]["ipv6"] += vpn[service][0]["ipv6"]
+                if "ipv4" in vpn[service][0]:
+                    status[vpn["name"]][service]["ipv4"] += vpn[service][0]["ipv4"]
+                if "ipv6" in vpn[service][0]:
+                    status[vpn["name"]][service]["ipv6"] += vpn[service][0]["ipv6"]
+
     messages = []
     for vpn in status:
         if vpn_server == vpn or "all" in vpn_server:
