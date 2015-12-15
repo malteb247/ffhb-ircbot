@@ -10,11 +10,12 @@ import math
 
 NODELIST_URL = "http://downloads.bremen.freifunk.net/data/nodelist.json"
 NODES_URL = "http://downloads.bremen.freifunk.net/data/nodes.json"
-STATUS_URL = "http://status.ffhb.tk/data/merged.json"
 STATUS_OVERALL = "http://status.ffhb.tk/data/overall.json"
-STATUS_URL_RELOAD_MINUTES = 60
+STATUS_URL_RELOAD_MINUTES = 5
 CHANNEL = "#ffhb_gelaber"
 
+#CACHE-DB
+status_db = {}
 
 def setup(bot):
     def monitor(bot):
@@ -178,6 +179,7 @@ def ffhb_gateway(bot, trigger, to=None):
     :return:
     """
     command_name = "vpn"
+    limit = 50
     # Selector
     if trigger is not None and trigger.group(2) is not None:
         vpn_server = trigger.group(2).lower()
@@ -187,42 +189,41 @@ def ffhb_gateway(bot, trigger, to=None):
         vpn_server += ".bremen.freifunk.net"
 
     services = ["ntp", "addresses", "dns", "uplink"]
-    status_json = get_json(STATUS_URL)
-    status = {}
-    count = 0
-    for data in status_json:
-        count += 1
-        for vpn in data["vpn-servers"]:
-            if vpn["name"] not in status:
-                status[vpn["name"]] = {}
-                for service in services:
-                    status[vpn["name"]][service] = {"ipv6": 0, "ipv4": 0}
-
-            for service in services:
-                if "ipv4" in vpn[service][0]:
-                    status[vpn["name"]][service]["ipv4"] += vpn[service][0]["ipv4"]
-                if "ipv6" in vpn[service][0]:
-                    status[vpn["name"]][service]["ipv6"] += vpn[service][0]["ipv6"]
+    status = get_json(STATUS_OVERALL)['vpn-servers']
 
     messages = []
     for vpn in status:
         if vpn_server == vpn or "all" in vpn_server:
             for service in services:
-                limit = 0.50
-                ipv4_rate = float(status[vpn][service]["ipv4"]) / float(count)
-                ipv6_rate = float(status[vpn][service]["ipv6"]) / float(count)
+                changed = False
+                if vpn not in status_db:
+                    status_db[vpn] = {}
+                    changed = True
+                if service not in status_db[vpn]:
+                    status_db[vpn][service] = {"ipv4":0,"ipv6":0}
 
-                if round(ipv4_rate, 2) < limit or round(ipv6_rate, 2) < limit:
-                    messages.append("{} - {}: (IPv4: {}, IPv6: {}) count:{}".format(vpn,
-                                                                                    service,
-                                                                                    status[vpn][service]["ipv4"],
-                                                                                    status[vpn][service]["ipv6"],
-                                                                                    count))
+
+                if status[vpn][service]["ipv4"]["percent-good"] != status_db[vpn][service]["ipv4"]:
+                    status_db[vpn][service]["ipv4"] = status[vpn][service]["ipv4"]["percent-good"]
+                    changed = True
+
+                if status[vpn][service]["ipv6"]["percent-good"] != status_db[vpn][service]["ipv6"]:
+                    status_db[vpn][service]["ipv6"] = status[vpn][service]["ipv6"]["percent-good"]
+                    changed = True
+
+                if status[vpn][service]["ipv4"]["percent-good"] < limit or status[vpn][service]["ipv6"]["percent-good"] < limit and (changed or to is None):
+                    messages.append("{} - {}: (IPv4: {}, IPv6: {})".format(vpn,
+                                                                           service,
+                                                                           status[vpn][service]["ipv4"]["percent-good"],
+                                                                           status[vpn][service]["ipv6"]["percent-good"]))
     if len(messages) > 0:
         if to is None:
             send_messages(bot, command_name, messages)
         else:
             send_messages(bot, command_name, messages, to)
+    else:
+        if to is None:
+            send_messages(bot, command_name, ["Network is running without problems :)"])
 
 
 def shorter(s, length=27, ext="..."):
