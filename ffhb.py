@@ -211,7 +211,7 @@ def ffhb_gateway(bot, trigger, to=None):
                     status_db[vpn][service]["ipv6"] = status[vpn][service]["ipv6"]["percent-good"]
                     changed = True
 
-                if status[vpn][service]["ipv4"]["percent-good"] < limit or status[vpn][service]["ipv6"]["percent-good"] < limit and (changed or to is None):
+                if (status[vpn][service]["ipv4"]["percent-good"] < limit or status[vpn][service]["ipv6"]["percent-good"] < limit) and (changed or to is None):
                     messages.append("{} - {}: (IPv4: {}%, IPv6: {}%)".format(vpn,
                                                                            service,
                                                                            status[vpn][service]["ipv4"]["percent-good"],
