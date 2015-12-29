@@ -3,7 +3,7 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 
 ## sample output
 
-###.top
+### .top
 
 ```
 .top
@@ -14,7 +14,7 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 [TOP] 5: bunte-eiche (18)
 ```
 
-###.node *NODENAME*
+### .node *NODENAME*
 
 ```
 .node menkar01
@@ -36,7 +36,7 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 [NODE] http://bremen.freifunk.net/meshviewer/#!v:m;n:c4e984b0da68
 ```
 
-###.status
+### .status
 
 ```
 .status
@@ -44,7 +44,7 @@ A module for [sopel](https://github.com/sopel-irc/sopel) with [FreifunkBremen](h
 [STATUS] Es sind 313 clients verbunden (~1.74 je Knoten).
 ```
 
-###.vpn
+### .vpn
 Commands
 * status of all vpns: `.status`, `.status all`
 * status of specific vpn:`.status vpn01`, `.status vpn01.bremen.freifunk.net`
