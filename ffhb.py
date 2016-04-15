@@ -7,11 +7,11 @@ import sopel.module
 import threading
 import time
 
-NODELIST_URL = "https://downloads.bremen.freifunk.net/data/nodelist.json"
-NODES_URL = "https://downloads.bremen.freifunk.net/data/nodes.json"
-STATUS_OVERALL = "https://status.ffhb.mortzu.de/data/overall.json"
+NODELIST_URL = "https://downloads.ffhb.de/data/nodelist.json"
+NODES_URL = "https://downloads.ffhb.de/data/nodes.json"
+STATUS_OVERALL = "https://status.ffhb.de/data/overall.json"
 STATUS_URL_RELOAD_MINUTES = 5
-CHANNEL = "#ffhb_gelaber"
+CHANNEL = "#ffhb_status"
 
 # VPN-Server status cache.
 status_cache = {}
